@@ -231,7 +231,7 @@ void Sudoku::iniciarValidacaoParalela(int numThreads) {
         packaged_task<bool(int, int)> task(
             bind(&Sudoku::validarLinhas, this, startRow, endRow));
         futurosValidacao.push_back(task.get_future());
-        threadsValidacao.emplace_back(move(task), startRow, endRow);
+        threadsValidacao.emplace_back(std::move(task), startRow, endRow);
     }
     
     // Criar threads para validar colunas
@@ -242,7 +242,7 @@ void Sudoku::iniciarValidacaoParalela(int numThreads) {
         packaged_task<bool(int, int)> task(
             bind(&Sudoku::validarColunas, this, startCol, endCol));
         futurosValidacao.push_back(task.get_future());
-        threadsValidacao.emplace_back(move(task), startCol, endCol);
+        threadsValidacao.emplace_back(std::move(task), startCol, endCol);
     }
     
     // Criar threads para validar blocos 3x3
@@ -253,7 +253,7 @@ void Sudoku::iniciarValidacaoParalela(int numThreads) {
         packaged_task<bool(int, int)> task(
             bind(&Sudoku::validarBlocos, this, startBlock, endBlock));
         futurosValidacao.push_back(task.get_future());
-        threadsValidacao.emplace_back(move(task), startBlock, endBlock);
+        threadsValidacao.emplace_back(std::move(task), startBlock, endBlock);
     }
     
     // Aguardar a conclusão de todas as threads
@@ -330,8 +330,8 @@ Sudoku::Sudoku(Dificuldade nivel) : isThreadValid(false), validacaoConcluida(fal
 
 // Construtor de movimento
 Sudoku::Sudoku(Sudoku&& other) noexcept 
-    : matriz(move(other.matriz)),
-      validationThread(move(other.validationThread)),
+    : matriz(std::move(other.matriz)),
+      validationThread(std::move(other.validationThread)),
       isThreadValid(other.isThreadValid),
       validacaoConcluida(false),
       ultimasStats(other.ultimasStats) {
@@ -348,8 +348,8 @@ Sudoku& Sudoku::operator=(Sudoku&& other) noexcept {
         }
         
         // Mover os dados
-        matriz = move(other.matriz);
-        validationThread = move(other.validationThread);
+        matriz = std::move(other.matriz);
+        validationThread = std::move(other.validationThread);
         isThreadValid = other.isThreadValid;
         // Não podemos atribuir std::atomic, então usamos store/load
         validacaoConcluida.store(other.validacaoConcluida.load());
