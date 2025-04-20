@@ -51,7 +51,6 @@ Opções:
 
 - Compilador C++ com suporte a C++11
 - Biblioteca pthread
-- (Opcional) Docker para execução em container
 
 ### Compilação Local
 
@@ -67,40 +66,10 @@ g++ -std=c++11 -pthread main.cpp Sudoku.cpp -o sudoku_game
 
 ### Execução com Docker
 
-#### Pré-requisitos
-
-- Docker instalado em seu sistema
-
-#### Iniciar o Serviço Docker
-
-Antes de construir ou executar containers, certifique-se de que o serviço Docker esteja em execução:
-
-**macOS**:
-- Abra o aplicativo Docker Desktop
-- Aguarde até que o ícone do Docker na barra de menu indique que o Docker está em execução
-
-**Linux**:
-```bash
-sudo systemctl start docker
-```
-
-**Windows**:
-- Abra o aplicativo Docker Desktop
-- Aguarde até que o ícone do Docker na barra de tarefas indique que o Docker está em execução
-
-#### Construir a Imagem Docker
-
 ```bash
 docker build -t sudoku-game .
-```
-
-#### Executar o Container
-
-```bash
 docker run -it sudoku-game
 ```
-
-A flag `-it` é necessária para permitir a interação com o jogo através do terminal.
 
 ## Instruções de Uso
 
@@ -112,6 +81,13 @@ A flag `-it` é necessária para permitir a interação com o jogo através do t
    - **Novo jogo**: Inicia um novo jogo com diferentes níveis de dificuldade (fácil, médio, difícil).
    - **Sair**: Encerra o jogo.
 
+## Arquivos do Projeto
+
+- `Sudoku.h`: Definição da classe com atributos relacionados a threads
+- `Sudoku.cpp`: Implementação dos métodos de validação multithread
+- `main.cpp`: Interface interativa com opções para teste de threads
+- `Dockerfile`: Configuração para containerização do jogo
+
 ## Contribuições
 
 Este projeto foi desenvolvido por:
@@ -119,10 +95,3 @@ Este projeto foi desenvolvido por:
 - **Davi Nasiasene**: Desenvolveu o esqueleto do código e a base da classe Sudoku.
 - **Leonardo Chianca**: Deixou a aplicação mais amigável, melhorando logs e a jogabilidade em si.
 - **Ian Bittencourt**: Implementou os métodos de verificação com o uso de threads.
-
-## Arquivos do Projeto
-
-- `Sudoku.h`: Definição da classe com atributos relacionados a threads
-- `Sudoku.cpp`: Implementação dos métodos de validação multithread
-- `main.cpp`: Interface interativa com opções para teste de threads
-- `Dockerfile`: Configuração para containerização do jogo
