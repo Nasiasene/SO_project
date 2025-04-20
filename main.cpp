@@ -1,57 +1,190 @@
 #include <iostream>
+#include <limits>
 #include "Sudoku.h"
 
-void demonstrarDificuldade(Dificuldade nivel) {
-    std::string nivelStr;
-    switch (nivel) {
-        case Dificuldade::FACIL:
-            nivelStr = "FÁCIL";
-            break;
-        case Dificuldade::MEDIO:
-            nivelStr = "MÉDIO";
-            break;
-        case Dificuldade::DIFICIL:
-            nivelStr = "DIFÍCIL";
-            break;
+using namespace std;
+
+void limparTela() {
+    #ifdef _WIN32
+        system("cls");
+    #else
+        system("clear");
+    #endif
+}
+
+Dificuldade escolherDificuldade() {
+    int escolha = 0;
+    
+    while (escolha < 1 || escolha > 3) {
+        cout << "Escolha o nível de dificuldade:" << endl;
+        cout << "1. Fácil (50% preenchido)" << endl;
+        cout << "2. Médio (20% preenchido)" << endl;
+        cout << "3. Difícil (10% preenchido)" << endl;
+        cout << "Sua escolha (1-3): ";
+        cin >> escolha;
+        
+        if (cin.fail()) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            escolha = 0;
+        }
     }
     
-    std::cout << "\n\n===== DEMONSTRAÇÃO DO NÍVEL " << nivelStr << " =====" << std::endl;
+    switch (escolha) {
+        case 1: return Dificuldade::FACIL;
+        case 2: return Dificuldade::MEDIO;
+        case 3: return Dificuldade::DIFICIL;
+        default: return Dificuldade::MEDIO; // Nunca deve chegar aqui
+    }
+}
+
+void jogarSudoku() {
+    limparTela();
+    cout << "===== JOGO DE SUDOKU =====" << endl;
     
-    // Criar Sudoku com o nível especificado
-    Sudoku sudoku(nivel);
+    // Escolher dificuldade
+    Dificuldade nivel = escolherDificuldade();
     
-    // Mostrar o tabuleiro inicial
-    std::cout << "Tabuleiro inicial (nível " << nivelStr << "):" << std::endl;
-    sudoku.imprimirMatriz();
+    // Criar jogo
+    Sudoku jogo(nivel);
     
-    // Validar o tabuleiro
-    sudoku.iniciarValidacao();
-    std::cout << "O tabuleiro é " << (sudoku.isValidThread() ? "válido" : "inválido") << std::endl;
+    bool jogando = true;
+    
+    while (jogando) {
+        limparTela();
+        
+        // Mostrar o tabuleiro
+        jogo.imprimirMatriz();
+        
+        // Menu de opções
+        cout << "\nOpções:" << endl;
+        cout << "1. Inserir valor" << endl;
+        cout << "2. Verificar tabuleiro" << endl;
+        cout << "3. Completar tabuleiro" << endl;
+        cout << "4. Novo jogo" << endl;
+        cout << "5. Sair" << endl;
+        
+        int opcao = 0;
+        cout << "\nEscolha uma opção (1-5): ";
+        cin >> opcao;
+        
+        if (cin.fail()) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            continue;
+        }
+        
+        switch (opcao) {
+            case 1: {
+                int linha, coluna, valor;
+                
+                cout << "Digite a linha (1-9): ";
+                cin >> linha;
+                
+                cout << "Digite a coluna (1-9): ";
+                cin >> coluna;
+                
+                cout << "Digite o valor (1-9): ";
+                cin >> valor;
+                
+                if (cin.fail() || linha < 1 || linha > 9 || coluna < 1 || coluna > 9 || valor < 1 || valor > 9) {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "Valores inválidos! Pressione Enter para continuar...";
+                    cin.get();
+                    cin.get();
+                } else {
+                    // Converter de 1-9 para 0-8 para uso interno
+                    jogo.setValor(linha - 1, coluna - 1, valor);
+                }
+                break;
+            }
+            case 2: {
+                // Verificar tabuleiro
+                int escolhaVerificacao = 0;
+                cout << "Como deseja verificar o tabuleiro?" << endl;
+                cout << "1. Verificação simples (1 thread)" << endl;
+                cout << "2. Verificação paralela (múltiplas threads)" << endl;
+                cout << "Sua escolha (1-2): ";
+                cin >> escolhaVerificacao;
+                
+                if (cin.fail() || (escolhaVerificacao != 1 && escolhaVerificacao != 2)) {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "Opção inválida! Usando verificação simples." << endl;
+                    escolhaVerificacao = 1;
+                }
+                
+                if (escolhaVerificacao == 1) {
+                    // Verificação simples
+                    jogo.iniciarValidacao();
+                    cout << "\nVerificação: O tabuleiro é " 
+                         << (jogo.isValidThread() ? "válido" : "inválido") << endl;
+                } else {
+                    // Verificação paralela
+                    int numThreads = 0;
+                    cout << "Digite o número de threads para validação (1-4): ";
+                    cin >> numThreads;
+                    
+                    if (cin.fail() || numThreads < 1 || numThreads > 4) {
+                        cin.clear();
+                        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                        cout << "Número inválido! Usando 3 threads por padrão." << endl;
+                        numThreads = 3;
+                    }
+                    
+                    jogo.iniciarValidacaoParalela(numThreads);
+                }
+                
+                // Mostrar log detalhado após a verificação
+                jogo.imprimirLogValidacao();
+                cout << "\nPressione Enter para continuar...";
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                cin.get();
+                break;
+            }
+            case 3: {
+                // Completar tabuleiro
+                int escolhaCompletar = 0;
+                cout << "Como deseja completar o tabuleiro?" << endl;
+                cout << "1. Com valores válidos (solução correta)" << endl;
+                cout << "2. Com valores aleatórios (pode ser inválido)" << endl;
+                cout << "Sua escolha (1-2): ";
+                cin >> escolhaCompletar;
+                
+                if (cin.fail() || (escolhaCompletar != 1 && escolhaCompletar != 2)) {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "Opção inválida! Pressione Enter para continuar...";
+                    cin.get();
+                    cin.get();
+                } else {
+                    // Completar com valores válidos (true) ou aleatórios (false)
+                    jogo.completarMatrizAtual(escolhaCompletar == 1);
+                }
+                break;
+            }
+            case 4: {
+                nivel = escolherDificuldade();
+                // Criar um novo jogo com o nível selecionado
+                jogo = Sudoku(nivel);
+                break;
+            }
+            case 5:
+                jogando = false;
+                break;
+            default:
+                cout << "Opção inválida! Pressione Enter para continuar...";
+                cin.get();
+                cin.get();
+                break;
+        }
+    }
+    
+    cout << "Obrigado por jogar Sudoku!" << endl;
 }
 
 int main() {
-    std::cout << "===== JOGO DE SUDOKU COM NÍVEIS DE DIFICULDADE =====" << std::endl;
-    
-    // Demonstrar os três níveis de dificuldade
-    demonstrarDificuldade(Dificuldade::FACIL);
-    demonstrarDificuldade(Dificuldade::MEDIO);
-    demonstrarDificuldade(Dificuldade::DIFICIL);
-    
-    // Exemplo de uso interativo (opcional)
-    std::cout << "\n\n===== EXEMPLO DE JOGO INTERATIVO =====" << std::endl;
-    Sudoku jogoInterativo(Dificuldade::MEDIO);
-    std::cout << "Jogo no nível MÉDIO criado:" << std::endl;
-    jogoInterativo.imprimirMatriz();
-    
-    // Exemplo de inserção de um valor
-    std::cout << "\nInserindo valor 5 na posição (0,0):" << std::endl;
-    jogoInterativo.setValor(0, 0, 5);
-    jogoInterativo.imprimirMatriz();
-    
-    // Validar o tabuleiro após modificação
-    jogoInterativo.iniciarValidacao();
-    std::cout << "Após modificação, o tabuleiro é " 
-              << (jogoInterativo.isValidThread() ? "válido" : "inválido") << std::endl;
-    
+    jogarSudoku();
     return 0;
 }
