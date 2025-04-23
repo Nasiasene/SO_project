@@ -89,6 +89,19 @@ void Sudoku::validationFunction() {
 
 // Função para validar linhas
 bool Sudoku::validarLinhas(int startRow, int endRow) {
+    // Detecta incompletude nesta linha
+    for (int row = startRow; row < endRow; row++) {
+        for (int col = 0; col < 9; col++) {
+            if (matriz[row][col] == 0) {
+                lock_guard<mutex> lock(mtx);
+                cout << "[Thread " << this_thread::get_id()
+                     << "] Linhas " << startRow+1 << "-" << endRow
+                     << ": INCOMPLETO (célula vazia em " 
+                     << row+1 << "," << col+1 << ")" << endl;
+                return false;  // sinaliza “incompleto” como falso
+            }
+        }
+    }
     auto inicio = chrono::high_resolution_clock::now();
     
     bool valido = true;
@@ -124,6 +137,20 @@ bool Sudoku::validarLinhas(int startRow, int endRow) {
 
 // Função para validar colunas
 bool Sudoku::validarColunas(int startCol, int endCol) {
+    // Detecta incompletude neste bloco de colunas
+    for (int col = startCol; col < endCol; col++) {
+        for (int row = 0; row < 9; row++) {
+            if (matriz[row][col] == 0) {
+                lock_guard<mutex> lock(mtx);
+                cout << "[Thread " << this_thread::get_id()
+                     << "] Colunas " << startCol+1 << "-" << endCol
+                     << ": INCOMPLETO (célula vazia em "
+                     << row+1 << "," << col+1 << ")" << endl;
+                return false;
+            }
+        }
+    }
+    
     auto inicio = chrono::high_resolution_clock::now();
     
     bool valido = true;
@@ -159,6 +186,25 @@ bool Sudoku::validarColunas(int startCol, int endCol) {
 
 // Função para validar blocos 3x3
 bool Sudoku::validarBlocos(int startBlock, int endBlock) {
+    // Detecta incompletude neste bloco de sub-quadros
+    for (int block = startBlock; block < endBlock; block++) {
+        int startRow = (block / 3) * 3;
+        int startCol = (block % 3) * 3;
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                if (matriz[startRow + i][startCol + j] == 0) {
+                    lock_guard<mutex> lock(mtx);
+                    cout << "[Thread " << this_thread::get_id()
+                         << "] Bloco " << block+1
+                         << ": INCOMPLETO (célula vazia em "
+                         << (startRow + i +1) << ","
+                         << (startCol + j +1) << ")" << endl;
+                    return false;
+                }
+            }
+        }
+    }
+
     auto inicio = chrono::high_resolution_clock::now();
     
     bool valido = true;
@@ -198,91 +244,76 @@ bool Sudoku::validarBlocos(int startBlock, int endBlock) {
 }
 
 // Método para iniciar validação paralela com múltiplas threads
-void Sudoku::iniciarValidacaoParalela(int numThreads) {
-    // Limpar threads anteriores
+void Sudoku::iniciarValidacaoParalela() {
+    // 1) Finaliza eventuais threads antigas
     for (auto& t : threadsValidacao) {
-        if (t.joinable()) {
-            t.join();
-        }
+        if (t.joinable()) t.join();
     }
     threadsValidacao.clear();
     futurosValidacao.clear();
-    
+
+    // 2) Marca início da medição
     auto inicio = chrono::high_resolution_clock::now();
-    
-    cout << "\n[Sistema] Iniciando validação paralela com " << numThreads << " threads..." << endl;
-    
+    cout << "\n[Sistema] Iniciando validação paralela com 11 threads..." << endl;
+
+    // 3) Flags de controle
     validacaoConcluida.store(false);
     isThreadValid = true;
-    
-    // Dividir o trabalho entre as threads
-    int linhasPorThread = 9 / numThreads;
-    int colunasPorThread = 9 / numThreads;
-    int blocosPorThread = 9 / numThreads;
-    
-    int totalCelulasVerificadas = 0;
-    int totalConflitosEncontrados = 0;
-    
-    // Criar threads para validar linhas
-    for (int i = 0; i < numThreads; i++) {
-        int startRow = i * linhasPorThread;
-        int endRow = (i == numThreads - 1) ? 9 : (i + 1) * linhasPorThread;
-        
-        packaged_task<bool(int, int)> task(
-            bind(&Sudoku::validarLinhas, this, startRow, endRow));
+
+    // 4) Thread única para colunas (0–9)
+    {
+        packaged_task<bool()> task(
+            bind(&Sudoku::validarColunas, this, 0, 9)
+        );
         futurosValidacao.push_back(task.get_future());
-        threadsValidacao.emplace_back(std::move(task), startRow, endRow);
+        threadsValidacao.emplace_back(std::move(task));
     }
-    
-    // Criar threads para validar colunas
-    for (int i = 0; i < numThreads; i++) {
-        int startCol = i * colunasPorThread;
-        int endCol = (i == numThreads - 1) ? 9 : (i + 1) * colunasPorThread;
-        
-        packaged_task<bool(int, int)> task(
-            bind(&Sudoku::validarColunas, this, startCol, endCol));
+
+    // 5) Thread única para linhas (0–9)
+    {
+        packaged_task<bool()> task(
+            bind(&Sudoku::validarLinhas, this, 0, 9)
+        );
         futurosValidacao.push_back(task.get_future());
-        threadsValidacao.emplace_back(std::move(task), startCol, endCol);
+        threadsValidacao.emplace_back(std::move(task));
     }
-    
-    // Criar threads para validar blocos 3x3
-    for (int i = 0; i < numThreads; i++) {
-        int startBlock = i * blocosPorThread;
-        int endBlock = (i == numThreads - 1) ? 9 : (i + 1) * blocosPorThread;
-        
-        packaged_task<bool(int, int)> task(
-            bind(&Sudoku::validarBlocos, this, startBlock, endBlock));
+
+    // 6) Nove threads, uma para cada bloco 3×3
+    for (int block = 0; block < 9; block++) {
+        packaged_task<bool()> task(
+            bind(&Sudoku::validarBlocos, this, block, block + 1)
+        );
         futurosValidacao.push_back(task.get_future());
-        threadsValidacao.emplace_back(std::move(task), startBlock, endBlock);
+        threadsValidacao.emplace_back(std::move(task));
     }
-    
-    // Aguardar a conclusão de todas as threads
-    for (auto& future : futurosValidacao) {
-        if (!future.get()) {
+
+    // 7) Coleta resultados
+    for (auto& fut : futurosValidacao) {
+        if (!fut.get()) {
             isThreadValid = false;
         }
     }
-    
-    // Juntar todas as threads
+
+    // 8) Garante join em todas as threads
     for (auto& t : threadsValidacao) {
-        if (t.joinable()) {
-            t.join();
-        }
+        if (t.joinable()) t.join();
     }
-    
+
+    // 9) Estatísticas e relatório
     auto fim = chrono::high_resolution_clock::now();
     auto duracao = chrono::duration_cast<chrono::milliseconds>(fim - inicio);
-    
-    // Armazenar estatísticas
-    ultimasStats.tempoExecucao = duracao;
-    ultimasStats.numCelulasVerificadas = 9 * 9 * 3; // Todas as células são verificadas 3 vezes (linha, coluna, bloco)
-    ultimasStats.numThreadsUsadas = numThreads * 3; // 3 conjuntos de threads (linhas, colunas, blocos)
-    
+
+    ultimasStats.tempoExecucao         = duracao;
+    // 1 thread columnas + 1 thread linhas + 9 threads blocos
+    ultimasStats.numThreadsUsadas     = 11;
+    // 81 células validadas 3×, mas você pode ajustar conforme queira
+    ultimasStats.numCelulasVerificadas = 9 * 9 * 3;
+
     validacaoConcluida.store(true);
-    
-    cout << "[Sistema] Validação paralela concluída em " << duracao.count() 
-         << "ms usando " << numThreads * 3 << " threads." << endl;
-    cout << "[Sistema] Resultado: O tabuleiro é " 
+
+    cout << "[Sistema] Validação paralela concluída em "
+         << duracao.count() << "ms usando 11 threads." << endl;
+    cout << "[Sistema] Resultado: O tabuleiro é "
          << (isThreadValid ? "válido" : "inválido") << endl;
 }
 
@@ -294,11 +325,11 @@ ValidacaoStats Sudoku::getUltimasStats() const {
 // Método para imprimir log detalhado da validação
 void Sudoku::imprimirLogValidacao() {
     cout << "\n===== LOG DETALHADO DE VALIDAÇÃO =====" << endl;
+    cout << "Status: " << (isThreadValid ? "VÁLIDO" : "INVÁLIDO/INCOMPLETO") << endl;
     cout << "Tempo de execução: " << ultimasStats.tempoExecucao.count() << " ms" << endl;
-    cout << "Células verificadas: " << ultimasStats.numCelulasVerificadas << endl;
-    cout << "Conflitos encontrados: " << ultimasStats.numConflitosEncontrados << endl;
-    cout << "Threads utilizadas: " << ultimasStats.numThreadsUsadas << endl;
-    cout << "Resultado: " << (isThreadValid ? "VÁLIDO" : "INVÁLIDO") << endl;
+    cout << "Células verificadas: "      << ultimasStats.numCelulasVerificadas << endl;
+    cout << "Conflitos encontrados: "    << ultimasStats.numConflitosEncontrados << endl;
+    cout << "Threads utilizadas: "      << ultimasStats.numThreadsUsadas << endl;
     cout << "=======================================" << endl;
 }
 
@@ -385,6 +416,17 @@ int Sudoku::getValor(int row, int col) {
         return -1;
     }
     return matriz[row][col];
+}
+
+bool Sudoku::isComplete() const {
+    for (const auto& row : matriz) {
+        for (int v : row) {
+            if (v == 0) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 // Método para iniciar a thread de validação

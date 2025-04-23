@@ -121,19 +121,8 @@ void jogarSudoku() {
                     cout << "\nVerificação: O tabuleiro é " 
                          << (jogo.isValidThread() ? "válido" : "inválido") << endl;
                 } else {
-                    // Verificação paralela
-                    int numThreads = 0;
-                    cout << "Digite o número de threads para validação (1-4): ";
-                    cin >> numThreads;
-                    
-                    if (cin.fail() || numThreads < 1 || numThreads > 4) {
-                        cin.clear();
-                        cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                        cout << "Número inválido! Usando 3 threads por padrão." << endl;
-                        numThreads = 3;
-                    }
-                    
-                    jogo.iniciarValidacaoParalela(numThreads);
+                    // Verificação paralela utilizando 11 threads
+                    jogo.iniciarValidacaoParalela();
                 }
                 
                 // Mostrar log detalhado após a verificação

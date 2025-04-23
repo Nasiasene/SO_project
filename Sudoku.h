@@ -92,11 +92,14 @@ public:
     // Método para obter um valor da matriz
     int getValor(int row, int col);
 
+    // Método para retornar true se não houver nenhuma célula vazia (valor 0)
+    bool isComplete() const;
+
     // Método para iniciar a thread de validação
     void iniciarValidacao();
     
     // Método para iniciar validação paralela com múltiplas threads
-    void iniciarValidacaoParalela(int numThreads = 4);
+    void iniciarValidacaoParalela();
 
     // Método para verificar se a thread é válida
     bool isValidThread();
