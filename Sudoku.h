@@ -23,6 +23,8 @@ enum class Dificuldade {
 // Struct para armazenar estatísticas de validação
 struct ValidacaoStats {
     std::chrono::milliseconds tempoExecucao;
+    std::chrono::nanoseconds tempoEmNs;
+    std::clock_t cpuTicks;
     int numCelulasVerificadas;
     int numConflitosEncontrados;
     int numThreadsUsadas;
@@ -98,8 +100,11 @@ public:
     // Método para iniciar a thread de validação
     void iniciarValidacao();
     
-    // Método para iniciar validação paralela com múltiplas threads
+    // Método para iniciar validação paralela com 11 threads
     void iniciarValidacaoParalela();
+
+    // Método para iniciar validação paralela com 27 threads
+    void iniciarValidacaoParalelaDetalhada();
 
     // Método para verificar se a thread é válida
     bool isValidThread();

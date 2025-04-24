@@ -104,27 +104,33 @@ void jogarSudoku() {
                 int escolhaVerificacao = 0;
                 cout << "Como deseja verificar o tabuleiro?" << endl;
                 cout << "1. Verificação simples (1 thread)" << endl;
-                cout << "2. Verificação paralela (múltiplas threads)" << endl;
-                cout << "Sua escolha (1-2): ";
+                cout << "2. Verificação paralela (11 threads)" << endl;
+                cout << "3. Verificação paralela detalhada (27 threads)" << endl;
+                cout << "Sua escolha (1-3): ";
                 cin >> escolhaVerificacao;
-                
-                if (cin.fail() || (escolhaVerificacao != 1 && escolhaVerificacao != 2)) {
+
+                if (cin.fail() || escolhaVerificacao < 1 || escolhaVerificacao > 3) {
                     cin.clear();
                     cin.ignore(numeric_limits<streamsize>::max(), '\n');
                     cout << "Opção inválida! Usando verificação simples." << endl;
                     escolhaVerificacao = 1;
                 }
-                
+
                 if (escolhaVerificacao == 1) {
                     // Verificação simples
                     jogo.iniciarValidacao();
-                    cout << "\nVerificação: O tabuleiro é " 
-                         << (jogo.isValidThread() ? "válido" : "inválido") << endl;
-                } else {
-                    // Verificação paralela utilizando 11 threads
+                    cout << "\nVerificação: O tabuleiro é "
+                        << (jogo.isValidThread() ? "válido" : "inválido") << endl;
+                }
+                else if (escolhaVerificacao == 2) {
+                    // Verificação paralela estática (11 threads)
                     jogo.iniciarValidacaoParalela();
                 }
-                
+                else {
+                    // Verificação paralela detalhada (27 threads)
+                    jogo.iniciarValidacaoParalelaDetalhada();
+                }
+
                 // Mostrar log detalhado após a verificação
                 jogo.imprimirLogValidacao();
                 cout << "\nPressione Enter para continuar...";

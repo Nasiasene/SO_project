@@ -44,7 +44,9 @@ bool Sudoku::isValidValue(int row, int col, int value) {
 
 // Função que será executada pela thread de validação
 void Sudoku::validationFunction() {
-    auto inicio = chrono::high_resolution_clock::now();
+    auto inicioMs  = std::chrono::high_resolution_clock::now();
+    auto inicioNs  = inicioMs;
+    std::clock_t inicioCpu = std::clock();
     
     lock_guard<mutex> lock(mtx);
     isThreadValid = true;
@@ -70,11 +72,17 @@ void Sudoku::validationFunction() {
         }
     }
     
-    auto fim = chrono::high_resolution_clock::now();
-    auto duracao = chrono::duration_cast<chrono::milliseconds>(fim - inicio);
+    auto fimMs = std::chrono::high_resolution_clock::now();
+    auto fimNs = fimMs;
+    std::clock_t fimCpu = std::clock();
+    
+    auto duracaoMs = chrono::duration_cast<chrono::milliseconds>(fimMs - inicioMs);
+    auto duracaoNs = chrono::duration_cast<chrono::nanoseconds>(fimNs - inicioNs);
     
     // Armazenar estatísticas
-    ultimasStats.tempoExecucao = duracao;
+    ultimasStats.tempoExecucao = duracaoMs;
+    ultimasStats.tempoEmNs = duracaoNs;
+    ultimasStats.cpuTicks = fimCpu - inicioCpu;
     ultimasStats.numCelulasVerificadas = celulasVerificadas;
     ultimasStats.numConflitosEncontrados = conflitosEncontrados;
     ultimasStats.numThreadsUsadas = 1;
@@ -82,8 +90,8 @@ void Sudoku::validationFunction() {
     validacaoConcluida.store(true);
     cv.notify_all();
     
-    cout << "\n[Thread de Validação] Concluída em " << duracao.count() 
-         << "ms, verificadas " << celulasVerificadas << " células, encontrados " 
+    cout << "\n[Thread de Validação] Concluída em " << duracaoMs.count() 
+         << "ms, " << duracaoNs.count() << "ns, verificadas " << celulasVerificadas << " células, encontrados " 
          << conflitosEncontrados << " conflitos." << endl;
 }
 
@@ -243,7 +251,7 @@ bool Sudoku::validarBlocos(int startBlock, int endBlock) {
     return valido;
 }
 
-// Método para iniciar validação paralela com múltiplas threads
+// Método para iniciar validação paralela com 11 threads
 void Sudoku::iniciarValidacaoParalela() {
     // 1) Finaliza eventuais threads antigas
     for (auto& t : threadsValidacao) {
@@ -253,7 +261,10 @@ void Sudoku::iniciarValidacaoParalela() {
     futurosValidacao.clear();
 
     // 2) Marca início da medição
-    auto inicio = chrono::high_resolution_clock::now();
+    auto inicioMs = chrono::high_resolution_clock::now();
+    auto inicioNs = inicioMs;
+    std::clock_t inicioCpu = std::clock();
+    
     cout << "\n[Sistema] Iniciando validação paralela com 11 threads..." << endl;
 
     // 3) Flags de controle
@@ -300,10 +311,16 @@ void Sudoku::iniciarValidacaoParalela() {
     }
 
     // 9) Estatísticas e relatório
-    auto fim = chrono::high_resolution_clock::now();
-    auto duracao = chrono::duration_cast<chrono::milliseconds>(fim - inicio);
-
-    ultimasStats.tempoExecucao         = duracao;
+    auto fimMs = chrono::high_resolution_clock::now();
+    auto fimNs = fimMs;
+    std::clock_t fimCpu = std::clock();
+    
+    auto duracaoMs = chrono::duration_cast<chrono::milliseconds>(fimMs - inicioMs);
+    auto duracaoNs = chrono::duration_cast<chrono::nanoseconds>(fimNs - inicioNs);
+    
+    ultimasStats.tempoExecucao         = duracaoMs;
+    ultimasStats.tempoEmNs             = duracaoNs;
+    ultimasStats.cpuTicks              = fimCpu - inicioCpu;
     // 1 thread columnas + 1 thread linhas + 9 threads blocos
     ultimasStats.numThreadsUsadas     = 11;
     // 81 células validadas 3×, mas você pode ajustar conforme queira
@@ -312,7 +329,92 @@ void Sudoku::iniciarValidacaoParalela() {
     validacaoConcluida.store(true);
 
     cout << "[Sistema] Validação paralela concluída em "
-         << duracao.count() << "ms usando 11 threads." << endl;
+         << duracaoMs.count() << "ms, " << duracaoNs.count() << "ns, verificadas "
+        << ultimasStats.numCelulasVerificadas << " células, encontrados " 
+         << ultimasStats.numConflitosEncontrados << " conflitos." << endl;
+    cout << "[Sistema] Resultado: O tabuleiro é "
+         << (isThreadValid ? "válido" : "inválido") << endl;
+}
+
+// Método para iniciar validação paralela detalhada com 27 threads
+void Sudoku::iniciarValidacaoParalelaDetalhada() {
+    // 1) Finaliza eventuais threads antigas
+    for (auto& t : threadsValidacao) {
+        if (t.joinable()) t.join();
+    }
+    threadsValidacao.clear();
+    futurosValidacao.clear();
+
+    // 2) Marca início da medição
+    auto inicioMs = chrono::high_resolution_clock::now();
+    auto inicioNs = inicioMs;
+    std::clock_t inicioCpu = std::clock();
+    
+    cout << "\n[Sistema] Iniciando validação paralela detalhada com 27 threads..." << endl;
+
+    // 3) Flags de controle
+    validacaoConcluida.store(false);
+    isThreadValid = true;
+
+    // 4) Nove threads, uma para cada LINHA
+    for (int row = 0; row < 9; row++) {
+        packaged_task<bool()> task(
+            bind(&Sudoku::validarLinhas, this, row, row + 1)
+        );
+        futurosValidacao.push_back(task.get_future());
+        threadsValidacao.emplace_back(std::move(task));
+    }
+
+    // 5) Nove threads, uma para cada COLUNA
+    for (int col = 0; col < 9; col++) {
+        packaged_task<bool()> task(
+            bind(&Sudoku::validarColunas, this, col, col + 1)
+        );
+        futurosValidacao.push_back(task.get_future());
+        threadsValidacao.emplace_back(std::move(task));
+    }
+
+    // 6) Nove threads, uma para cada BLOCO 3×3
+    for (int block = 0; block < 9; block++) {
+        packaged_task<bool()> task(
+            bind(&Sudoku::validarBlocos, this, block, block + 1)
+        );
+        futurosValidacao.push_back(task.get_future());
+        threadsValidacao.emplace_back(std::move(task));
+    }
+
+    // 7) Coleta resultados de todas as 27 threads
+    for (auto& fut : futurosValidacao) {
+        if (!fut.get()) {
+            isThreadValid = false;
+        }
+    }
+
+    // 8) Garante join em todas as threads
+    for (auto& t : threadsValidacao) {
+        if (t.joinable()) t.join();
+    }
+
+    // 9) Estatísticas e relatório
+    auto fimMs = chrono::high_resolution_clock::now();
+    auto fimNs = fimMs;
+    std::clock_t fimCpu = std::clock();
+    
+    auto duracaoMs = chrono::duration_cast<chrono::milliseconds>(fimMs - inicioMs);
+    auto duracaoNs = chrono::duration_cast<chrono::nanoseconds>(fimNs - inicioNs);
+    
+    ultimasStats.tempoExecucao         = duracaoMs;
+    ultimasStats.tempoEmNs             = duracaoNs;
+    ultimasStats.cpuTicks              = fimCpu - inicioCpu;
+    ultimasStats.numThreadsUsadas      = 27;
+    ultimasStats.numCelulasVerificadas = 9 * 9 * 3;  // 243 verificações no total
+
+    validacaoConcluida.store(true);
+
+    cout << "[Sistema] Validação paralela detalhada concluída em "
+         << duracaoMs.count() << "ms, " << duracaoNs.count() << "ns, verificadas "
+        << ultimasStats.numCelulasVerificadas << " células, encontrados " 
+         << ultimasStats.numConflitosEncontrados << " conflitos." << endl;
     cout << "[Sistema] Resultado: O tabuleiro é "
          << (isThreadValid ? "válido" : "inválido") << endl;
 }
@@ -326,7 +428,9 @@ ValidacaoStats Sudoku::getUltimasStats() const {
 void Sudoku::imprimirLogValidacao() {
     cout << "\n===== LOG DETALHADO DE VALIDAÇÃO =====" << endl;
     cout << "Status: " << (isThreadValid ? "VÁLIDO" : "INVÁLIDO/INCOMPLETO") << endl;
-    cout << "Tempo de execução: " << ultimasStats.tempoExecucao.count() << " ms" << endl;
+    cout << "Tempo de execução em ms: " << ultimasStats.tempoExecucao.count() << " ms" << endl;
+    cout << "Tempo de execução em ns: " << ultimasStats.tempoEmNs.count() << " ns" << endl;
+    cout << "CPU ticks: " << ultimasStats.cpuTicks << endl;
     cout << "Células verificadas: "      << ultimasStats.numCelulasVerificadas << endl;
     cout << "Conflitos encontrados: "    << ultimasStats.numConflitosEncontrados << endl;
     cout << "Threads utilizadas: "      << ultimasStats.numThreadsUsadas << endl;
@@ -340,6 +444,8 @@ Sudoku::Sudoku() : isThreadValid(false), validacaoConcluida(false) {
     
     // Inicializar estatísticas
     ultimasStats.tempoExecucao = chrono::milliseconds(0);
+    ultimasStats.tempoEmNs = chrono::nanoseconds(0);
+    ultimasStats.cpuTicks = 0;
     ultimasStats.numCelulasVerificadas = 0;
     ultimasStats.numConflitosEncontrados = 0;
     ultimasStats.numThreadsUsadas = 0;
@@ -357,7 +463,7 @@ Sudoku::Sudoku(Dificuldade nivel) : isThreadValid(false), validacaoConcluida(fal
     ultimasStats.numThreadsUsadas = 0;
     
     inicializarJogo(nivel);
-}
+}   
 
 // Construtor de movimento
 Sudoku::Sudoku(Sudoku&& other) noexcept 
