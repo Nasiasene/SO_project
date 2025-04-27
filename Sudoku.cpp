@@ -106,7 +106,7 @@ bool Sudoku::validarLinhas(int startRow, int endRow) {
                      << "] Linhas " << startRow+1 << "-" << endRow
                      << ": INCOMPLETO (célula vazia em " 
                      << row+1 << "," << col+1 << ")" << endl;
-                return false;  // sinaliza “incompleto” como falso
+                return false;  // Sinaliza “incompleto” como falso
             }
         }
     }
@@ -154,7 +154,7 @@ bool Sudoku::validarColunas(int startCol, int endCol) {
                      << "] Colunas " << startCol+1 << "-" << endCol
                      << ": INCOMPLETO (célula vazia em "
                      << row+1 << "," << col+1 << ")" << endl;
-                return false;
+                return false; //Também sinaliza incompleto como falso
             }
         }
     }

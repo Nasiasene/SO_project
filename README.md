@@ -71,6 +71,16 @@ docker build -t sudoku-game .
 docker run -it sudoku-game
 ```
 
+### Execução na MV
+
+```bash
+ssh -i /path/to/key.pem ec2-user@18.191.154.157
+```
+
+```bash
+screen -r sudoku_resolver
+```
+
 ## Instruções de Uso
 
 1. Ao iniciar o jogo, você verá um tabuleiro de Sudoku parcialmente preenchido.
