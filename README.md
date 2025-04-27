@@ -76,7 +76,7 @@ docker run -it sudoku-game
 ```bash
 ssh -i /path/to/key.pem ec2-user@18.191.154.157
 ```
-
+ - Em seguida, dentro da MV:
 ```bash
 screen -r sudoku_resolver
 ```
