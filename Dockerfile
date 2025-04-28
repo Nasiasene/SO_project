@@ -13,7 +13,9 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copiar os arquivos do projeto
-COPY Sudoku.h Sudoku.cpp main.cpp Makefile /app/
+COPY src/Sudoku/Sudoku.h src/Sudoku/Sudoku.cpp /app/src/Sudoku/
+COPY src/main.cpp /app/src/
+COPY Makefile /app/
 
 # Compilar o programa
 RUN make

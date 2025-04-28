@@ -1,6 +1,6 @@
 #include <iostream>
 #include <limits>
-#include "Sudoku.h"
+#include "Sudoku/Sudoku.h"
 
 using namespace std;
 

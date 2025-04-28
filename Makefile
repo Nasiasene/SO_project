@@ -8,7 +8,7 @@ CXXFLAGS = -std=c++11 -pthread
 TARGET = sudoku_game
 
 # Arquivos fonte
-SRCS = main.cpp Sudoku.cpp
+SRCS = src/main.cpp src/Sudoku/Sudoku.cpp
 
 # Regra padrão
 all: $(TARGET)
