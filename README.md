@@ -58,12 +58,6 @@ Opções:
 make
 ```
 
-ou
-
-```bash
-g++ -std=c++11 -pthread main.cpp Sudoku.cpp -o sudoku_game
-```
-
 ### Execução Local
 
 ```bash
