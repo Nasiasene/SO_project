@@ -13,10 +13,10 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copiar os arquivos do projeto
-COPY Sudoku.h Sudoku.cpp main.cpp /app/
+COPY Sudoku.h Sudoku.cpp main.cpp Makefile /app/
 
 # Compilar o programa
-RUN g++ -std=c++11 -pthread main.cpp Sudoku.cpp -o sudoku_game
+RUN make
 
 # Executar o programa quando o container for iniciado
 CMD ["./sudoku_game"]
