@@ -75,16 +75,6 @@ public:
     // Construtor com nível de dificuldade
     Sudoku(Dificuldade nivel);
     
-    // Construtor de movimento
-    Sudoku(Sudoku&& other) noexcept;
-    
-    // Operador de atribuição de movimento
-    Sudoku& operator=(Sudoku&& other) noexcept;
-    
-    // Desabilitar cópia
-    Sudoku(const Sudoku&) = delete;
-    Sudoku& operator=(const Sudoku&) = delete;
-
     // Destrutor - verifica se a thread é válida
     ~Sudoku();
 

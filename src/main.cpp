@@ -34,7 +34,7 @@ Dificuldade escolherDificuldade() {
         case 1: return Dificuldade::FACIL;
         case 2: return Dificuldade::MEDIO;
         case 3: return Dificuldade::DIFICIL;
-        default: return Dificuldade::MEDIO; // Nunca deve chegar aqui
+        default: return Dificuldade::MEDIO; 
     }
 }
 
@@ -161,8 +161,7 @@ void jogarSudoku() {
             }
             case 4: {
                 nivel = escolherDificuldade();
-                // Criar um novo jogo com o nível selecionado
-                jogo = Sudoku(nivel);
+                jogo.inicializarJogo(nivel); // Poderia inicializar pelo construtor com nível: jogo = Sudoku(nivel);
                 break;
             }
             case 5:

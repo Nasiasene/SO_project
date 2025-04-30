@@ -127,7 +127,7 @@ bool Sudoku::validarLinhas(int startRow, int endRow) {
                      << "] Linhas " << startRow+1 << "-" << endRow
                      << ": INCOMPLETO (célula vazia em " 
                      << row+1 << "," << col+1 << ")" << endl;
-                return false;  // Sinaliza “incompleto” como falso
+                return false;  // Sinaliza "incompleto" como falso
             }
         }
     }
@@ -451,36 +451,6 @@ Sudoku::Sudoku(Dificuldade nivel) : isThreadValid(false), validacaoConcluida(fal
     
     inicializarJogo(nivel);
 }   
-
-// Construtor de movimento
-Sudoku::Sudoku(Sudoku&& other) noexcept 
-    : matriz(std::move(other.matriz)),
-      validationThread(std::move(other.validationThread)),
-      isThreadValid(other.isThreadValid),
-      validacaoConcluida(false),
-      ultimasStats(other.ultimasStats) {
-    // Não podemos mover std::atomic, então inicializamos com o valor da outra
-    validacaoConcluida.store(other.validacaoConcluida.load());
-}
-
-// Operador de atribuição de movimento
-Sudoku& Sudoku::operator=(Sudoku&& other) noexcept {
-    if (this != &other) {
-        // Finalizar a thread atual se estiver em execução
-        if (validationThread.joinable()) {
-            validationThread.join();
-        }
-        
-        // Mover os dados
-        matriz = std::move(other.matriz);
-        validationThread = std::move(other.validationThread);
-        isThreadValid = other.isThreadValid;
-        // Não podemos atribuir std::atomic, então usamos store/load
-        validacaoConcluida.store(other.validacaoConcluida.load());
-        ultimasStats = other.ultimasStats;
-    }
-    return *this;
-}
 
 // Destrutor - verifica se a thread é válida
 Sudoku::~Sudoku() {
