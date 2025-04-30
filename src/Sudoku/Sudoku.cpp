@@ -69,6 +69,12 @@ void Sudoku::validationFunction() {
                 // Restaurar o valor
                 matriz[row][col] = value;
             }
+            else{
+                // Célula vazia ⇒ estado incompleto
+                isThreadValid = false;
+                cout << "[Thread de Validação] INCOMPLETO (célula vazia em "
+                     << row+1 << "," << col+1 << ")" << endl;
+            }
         }
     }
     
@@ -97,19 +103,6 @@ void Sudoku::validationFunction() {
 
 // Função para validar linhas
 bool Sudoku::validarLinhas(int startRow, int endRow) {
-    // Detecta incompletude nesta linha
-    for (int row = startRow; row < endRow; row++) {
-        for (int col = 0; col < 9; col++) {
-            if (matriz[row][col] == 0) {
-                lock_guard<mutex> lock(mtx);
-                cout << "[Thread " << this_thread::get_id()
-                     << "] Linhas " << startRow+1 << "-" << endRow
-                     << ": INCOMPLETO (célula vazia em " 
-                     << row+1 << "," << col+1 << ")" << endl;
-                return false;  // Sinaliza “incompleto” como falso
-            }
-        }
-    }
     auto inicio = chrono::high_resolution_clock::now();
     
     bool valido = true;
@@ -127,6 +120,14 @@ bool Sudoku::validarLinhas(int startRow, int endRow) {
                     conflitosEncontrados++;
                 }
                 numeros[valor] = true;
+            }
+            else {
+                lock_guard<mutex> lock(mtx);
+                cout << "[Thread " << this_thread::get_id()
+                     << "] Linhas " << startRow+1 << "-" << endRow
+                     << ": INCOMPLETO (célula vazia em " 
+                     << row+1 << "," << col+1 << ")" << endl;
+                return false;  // Sinaliza “incompleto” como falso
             }
         }
     }
@@ -144,21 +145,7 @@ bool Sudoku::validarLinhas(int startRow, int endRow) {
 }
 
 // Função para validar colunas
-bool Sudoku::validarColunas(int startCol, int endCol) {
-    // Detecta incompletude neste bloco de colunas
-    for (int col = startCol; col < endCol; col++) {
-        for (int row = 0; row < 9; row++) {
-            if (matriz[row][col] == 0) {
-                lock_guard<mutex> lock(mtx);
-                cout << "[Thread " << this_thread::get_id()
-                     << "] Colunas " << startCol+1 << "-" << endCol
-                     << ": INCOMPLETO (célula vazia em "
-                     << row+1 << "," << col+1 << ")" << endl;
-                return false; //Também sinaliza incompleto como falso
-            }
-        }
-    }
-    
+bool Sudoku::validarColunas(int startCol, int endCol) { 
     auto inicio = chrono::high_resolution_clock::now();
     
     bool valido = true;
@@ -176,6 +163,14 @@ bool Sudoku::validarColunas(int startCol, int endCol) {
                     conflitosEncontrados++;
                 }
                 numeros[valor] = true;
+            }
+            else {
+                lock_guard<mutex> lock(mtx);
+                cout << "[Thread " << this_thread::get_id()
+                     << "] Colunas " << startCol+1 << "-" << endCol
+                     << ": INCOMPLETO (célula vazia em "
+                     << row+1 << "," << col+1 << ")" << endl;
+                return false; //Também sinaliza incompleto como falso
             }
         }
     }
@@ -194,25 +189,6 @@ bool Sudoku::validarColunas(int startCol, int endCol) {
 
 // Função para validar blocos 3x3
 bool Sudoku::validarBlocos(int startBlock, int endBlock) {
-    // Detecta incompletude neste bloco de sub-quadros
-    for (int block = startBlock; block < endBlock; block++) {
-        int startRow = (block / 3) * 3;
-        int startCol = (block % 3) * 3;
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                if (matriz[startRow + i][startCol + j] == 0) {
-                    lock_guard<mutex> lock(mtx);
-                    cout << "[Thread " << this_thread::get_id()
-                         << "] Bloco " << block+1
-                         << ": INCOMPLETO (célula vazia em "
-                         << (startRow + i +1) << ","
-                         << (startCol + j +1) << ")" << endl;
-                    return false;
-                }
-            }
-        }
-    }
-
     auto inicio = chrono::high_resolution_clock::now();
     
     bool valido = true;
@@ -234,6 +210,15 @@ bool Sudoku::validarBlocos(int startBlock, int endBlock) {
                         conflitosEncontrados++;
                     }
                     numeros[valor] = true;
+                }
+                else{
+                    lock_guard<mutex> lock(mtx);
+                    cout << "[Thread " << this_thread::get_id()
+                         << "] Bloco " << block+1
+                         << ": INCOMPLETO (célula vazia em "
+                         << (startRow + i +1) << ","
+                         << (startCol + j +1) << ")" << endl;
+                    return false;
                 }
             }
         }
@@ -323,7 +308,7 @@ void Sudoku::iniciarValidacaoParalela() {
     ultimasStats.cpuTicks              = fimCpu - inicioCpu;
     // 1 thread columnas + 1 thread linhas + 9 threads blocos
     ultimasStats.numThreadsUsadas     = 11;
-    // 81 células validadas 3×, mas você pode ajustar conforme queira
+    // 81 células validadas 3×, uma para as linhas, uma para colunas e outra para blocos
     ultimasStats.numCelulasVerificadas = 9 * 9 * 3;
 
     validacaoConcluida.store(true);
@@ -406,8 +391,10 @@ void Sudoku::iniciarValidacaoParalelaDetalhada() {
     ultimasStats.tempoExecucao         = duracaoMs;
     ultimasStats.tempoEmNs             = duracaoNs;
     ultimasStats.cpuTicks              = fimCpu - inicioCpu;
+    // 9 thread colunas + 9 thread linhas + 9 threads blocos 
     ultimasStats.numThreadsUsadas      = 27;
-    ultimasStats.numCelulasVerificadas = 9 * 9 * 3;  // 243 verificações no total
+    // 81 células validadas 3×, nove para as linhas, nove para colunas e nove para blocos
+    ultimasStats.numCelulasVerificadas = 9 * 9 * 3;
 
     validacaoConcluida.store(true);
 
